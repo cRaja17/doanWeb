@@ -1,0 +1,13 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+/* Filament chỉ quét source của chính nó, nên các Tailwind utility mà plugin
+   dùng trong vendor/ (vd CuratorPicker: h-64, object-cover, absolute...) không
+   được sinh ra -> giao diện modal chọn ảnh bị lệch. Khai báo thêm nguồn quét. */
+@source '../../../../app/Filament/**/*.php';
+@source '../../../../resources/views/filament/**/*.blade.php';
+@source '../../../../vendor/filament/**/*.blade.php';
+@source '../../../../vendor/awcodes/filament-curator/resources/views/**/*.blade.php';
+@source '../../../../vendor/awcodes/filament-curator/src/**/*.php';
+
+/* Style riêng của Curator (.checkered, .curator-grid-container, ...) */
+@import '../../../../vendor/awcodes/filament-curator/resources/dist/curator.css';
