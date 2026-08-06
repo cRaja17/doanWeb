@@ -146,6 +146,13 @@
                             show_cart_list();
                         }
                     }
+                },
+                error: function (xhr) {
+                    var message = xhr.responseJSON && xhr.responseJSON.message;
+                    if (message) {
+                        showToast(message);
+                    }
+                    showCart(false);
                 }
             });
         }
@@ -197,6 +204,13 @@
                 error: function (xhr, status, error) {
                     if (xhr.status === 419) {
                         location.reload();
+                        return;
+                    }
+                    // Hết hàng / sản phẩm ngừng bán: server trả 422 kèm lời nhắn,
+                    // phải cho khách thấy chứ không im lặng như trước.
+                    var message = xhr.responseJSON && xhr.responseJSON.message;
+                    if (message) {
+                        showToast(message);
                     } else {
                         console.error('Add to cart error:', error);
                     }

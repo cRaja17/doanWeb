@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\Information;
 use Illuminate\Http\Request;
+use App\Support\FrontendCache;
 use Illuminate\Support\Facades\Cache;
 
 class InformationController extends FontEndController
@@ -14,7 +15,7 @@ class InformationController extends FontEndController
     {
         $locale = app()->getLocale();
 
-        $information = Cache::remember('information_' . $slug . '-' . $locale, $this->cacheTime, function () use ($slug) {
+        $information = Cache::remember(FrontendCache::key('information_' . $slug . '-' . $locale), $this->cacheTime, function () use ($slug) {
             return Information::where(["slug" => $slug, "status" => 1])->first();
         });
 
@@ -22,7 +23,7 @@ class InformationController extends FontEndController
 
         // lấy tất cả các danh mục bài viết
 
-        $manyInformation =  Cache::remember('manyInformation_' . $locale, $this->cacheTime, function () use ($information) {
+        $manyInformation =  Cache::remember(FrontendCache::key('manyInformation_' . $locale), $this->cacheTime, function () use ($information) {
             return Information::where('status', 1)->get();
         });
 

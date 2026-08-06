@@ -6,11 +6,8 @@ use App\Entities\PayOS;
 use App\Exceptions\PayOSException;
 use App\Http\Controllers\Web\FontEndController;
 use App\Models\Order;
-use App\Models\Product;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -33,21 +30,13 @@ class PayOSController extends FontEndController
         $orderId = session('orderId');
 
         if (!$orderId) {
-            return $this->backToCheckout(translate([
-                'vi' => 'Phiên thanh toán đã hết hạn, vui lòng đặt hàng lại.',
-                'en' => 'Your payment session has expired, please place the order again.',
-                'fr' => 'Votre session de paiement a expiré, veuillez repasser la commande.',
-            ]));
+            return $this->backToCheckout(translate('payment.session_expired'));
         }
 
         $order = Order::where('transaction_code', $orderId)->first();
 
         if (!$order) {
-            return $this->backToCheckout(translate([
-                'vi' => 'Không tìm thấy đơn hàng.',
-                'en' => 'Order not found.',
-                'fr' => 'Commande introuvable.',
-            ]));
+            return $this->backToCheckout(translate('payment.order_not_found'));
         }
 
         // Đơn có thể đã được webhook xác nhận trong lúc khách quay lại trang.
@@ -67,11 +56,7 @@ class PayOSController extends FontEndController
                 'message' => $e->getMessage(),
             ]);
 
-            return $this->backToCheckout(translate([
-                'vi' => 'Không kết nối được cổng thanh toán, vui lòng thử lại sau.',
-                'en' => 'Could not reach the payment gateway, please try again later.',
-                'fr' => 'Impossible de joindre la passerelle de paiement, veuillez réessayer plus tard.',
-            ]));
+            return $this->backToCheckout(translate('payment.gateway_unreachable'));
         }
 
         $products = $this->orderProducts($order);
@@ -146,11 +131,7 @@ class PayOSController extends FontEndController
         $order = $this->orderFromRequest($request);
 
         if (!$order) {
-            return $this->backToCheckout(translate([
-                'vi' => 'Không tìm thấy đơn hàng.',
-                'en' => 'Order not found.',
-                'fr' => 'Commande introuvable.',
-            ]));
+            return $this->backToCheckout(translate('payment.order_not_found'));
         }
 
         if (! $order->isPaid()) {
@@ -165,11 +146,7 @@ class PayOSController extends FontEndController
         // Tiền đang trên đường về (PROCESSING): giữ khách ở trang thanh toán.
         session(['orderId' => $order->transaction_code, 'method_payment' => true]);
 
-        return redirect(route('payment.web.bank', [], true))->with('error', translate([
-            'vi' => 'Giao dịch đang được xử lý, vui lòng đợi trong giây lát.',
-            'en' => 'Your transaction is being processed, please wait a moment.',
-            'fr' => 'Votre transaction est en cours de traitement, veuillez patienter.',
-        ]));
+        return redirect(route('payment.web.bank', [], true))->with('error', translate('payment.processing'));
     }
 
     /**
@@ -190,15 +167,11 @@ class PayOSController extends FontEndController
                 Log::info('payOS: không huỷ được link thanh toán - ' . $e->getMessage());
             }
 
-            $order->status = Order::STATUS_CANCELLED;
-            $order->save();
+            // Đổi trạng thái và trả hàng đã giữ về kho.
+            $order->markAsCancelled();
         }
 
-        return $this->backToCheckout(translate([
-            'vi' => 'Bạn đã huỷ thanh toán. Giỏ hàng vẫn được giữ nguyên.',
-            'en' => 'You cancelled the payment. Your cart is still saved.',
-            'fr' => 'Vous avez annulé le paiement. Votre panier est conservé.',
-        ]));
+        return $this->backToCheckout(translate('payment.cancelled_by_user'));
     }
 
     /**
@@ -322,24 +295,14 @@ class PayOSController extends FontEndController
     }
 
     /**
-     * Đánh dấu đơn đã thanh toán. Khoá dòng để webhook và return URL không ghi đè nhau.
+     * Đánh dấu đơn đã thanh toán. Việc khoá dòng chống ghi đè nằm trong
+     * Order::markAsPaid() vì luồng PayPal cũng dùng chung.
      */
     private function markAsPaid(Order $order, ?string $reference, ?string $paidAt): void
     {
-        DB::transaction(function () use ($order, $reference, $paidAt) {
-            $locked = Order::whereKey($order->getKey())->lockForUpdate()->first();
-
-            if (!$locked || $locked->isPaid()) {
-                return;
-            }
-
-            $locked->status = Order::STATUS_PAID;
-            $locked->payos_reference = $reference;
-            $locked->paid_at = $paidAt ? Carbon::parse($paidAt) : now();
-            $locked->save();
-
-            $order->setRawAttributes($locked->getAttributes(), true);
-        });
+        if (! $order->markAsPaid($reference, $paidAt)) {
+            return;
+        }
 
         Log::info('payOS: đơn hàng đã thanh toán', [
             'order' => $order->transaction_code,
@@ -371,11 +334,11 @@ class PayOSController extends FontEndController
     {
         $items = [];
 
-        foreach ($this->orderContent($order) as $line) {
+        foreach ($order->details as $detail) {
             $items[] = [
-                'name' => mb_substr((string) ($line['name'] ?? ''), 0, 100),
-                'quantity' => (int) ($line['quantity'] ?? 1),
-                'price' => (int) round((float) ($line['unit_amount']['value'] ?? 0)),
+                'name' => mb_substr((string) $detail->name, 0, 100),
+                'quantity' => (int) $detail->quantity,
+                'price' => (int) round((float) $detail->price),
             ];
         }
 
@@ -389,27 +352,20 @@ class PayOSController extends FontEndController
     {
         $products = [];
 
-        foreach ($this->orderContent($order) as $key => $line) {
-            $product = Product::where('code', $line['code'] ?? null)->first();
+        foreach ($order->details()->with('product')->get() as $key => $detail) {
+            $product = $detail->product;
 
             $products[$key] = [
-                'code' => $line['code'] ?? '',
+                'code' => $detail->product_code ?? '',
                 'image' => $product?->image,
-                'name' => $product ? $product->getTranslations('name') : ($line['name'] ?? ''),
-                'price' => $line['unit_amount']['value'] ?? 0,
-                'unit' => $line['unit_amount']['currency_code'] ?? 'VND',
-                'qty' => $line['quantity'] ?? 1,
+                'name' => $product ? $product->getTranslations('name') : $detail->name,
+                'price' => $detail->price,
+                'unit' => $detail->currency_code ?? 'VND',
+                'qty' => $detail->quantity,
             ];
         }
 
         return $products;
-    }
-
-    private function orderContent(Order $order): array
-    {
-        $content = is_array($order->content) ? $order->content : json_decode((string) $order->content, true);
-
-        return is_array($content) ? $content : [];
     }
 
     private function orderFromRequest(Request $request): ?Order

@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\ImageColumn;
@@ -24,7 +22,7 @@ class ProductsTable
                 // {"vi":"...","en":"..."} nên phải tự viết truy vấn tìm kiếm,
                 // searchable() mặc định không khớp được kiểu dữ liệu này.
                 TextColumn::make('name')->label('Tên')
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('products.name', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('products.code', 'like', "%{$search}%"))
                     ->sortable(),
                 // Lấy tên danh mục qua quan hệ category() thay vì hiện id.
                 TextColumn::make('category.name')->label('Danh mục')
@@ -75,10 +73,8 @@ class ProductsTable
                             ->body('Đã lưu bản ghi thành công.')
                     ),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            // Không có thao tác hàng loạt: xoá sản phẩm bị cấm hoàn toàn
+            // (xem ProductResource::canDeleteAny() và Product::deletionBlockedReason()).
+            ->toolbarActions([]);
     }
 }

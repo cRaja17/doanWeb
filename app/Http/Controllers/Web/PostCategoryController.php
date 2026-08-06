@@ -8,6 +8,7 @@ use App\Models\PostCategory;
 use App\Models\ProductCategory;
 use Http\Discovery\Exception\NotFoundException;
 use Illuminate\Http\Request;
+use App\Support\FrontendCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -20,7 +21,7 @@ class PostCategoryController extends FontEndController
      */
     public function index(PostCategory $category, $slug)
     {
-        $category = Cache::remember('post_category_' . $slug, $this->cacheTime, function () use ($slug) {
+        $category = Cache::remember(FrontendCache::key('post_category_' . $slug), $this->cacheTime, function () use ($slug) {
             return PostCategory::where(["slug" => $slug, "status" => 1])->first();
         });
 
@@ -29,7 +30,7 @@ class PostCategoryController extends FontEndController
         $page = LengthAwarePaginator::resolveCurrentPage();
 
         // lấy bài viết nổi bật
-        $featuredArticle = Cache::remember('featured_article_' . $slug, $this->cacheTime, function () use ($category) {
+        $featuredArticle = Cache::remember(FrontendCache::key('featured_article_' . $slug), $this->cacheTime, function () use ($category) {
             return Post::where('status', 1)
                 ->take(5)
                 ->orderBy('view', 'DESC')
@@ -37,7 +38,7 @@ class PostCategoryController extends FontEndController
         });
 
         // tạo cache
-        $posts = Cache::remember('posts_for_category_' . $slug . '_page_' . $page, $this->cacheTime, function () use ($category) {
+        $posts = Cache::remember(FrontendCache::key('posts_for_category_' . $slug . '_page_' . $page), $this->cacheTime, function () use ($category) {
             $postsForCategory = $category->posts()->where('status', 1)->get();
 
             $paginatedData = new LengthAwarePaginator(
@@ -53,7 +54,7 @@ class PostCategoryController extends FontEndController
         });
 
         // lấy tất cả các danh mục bài viết
-        $categories = Cache::remember('categories', $this->cacheTime, function () {
+        $categories = Cache::remember(FrontendCache::key('categories'), $this->cacheTime, function () {
             return PostCategory::where('status', 1)->get();
         });
 
@@ -72,25 +73,25 @@ class PostCategoryController extends FontEndController
     {
         $page = LengthAwarePaginator::resolveCurrentPage();
 
-        $featuredArticle = Cache::remember('featured_articles_all', $this->cacheTime, function () {
+        $featuredArticle = Cache::remember(FrontendCache::key('featured_articles_all'), $this->cacheTime, function () {
             return Post::where('status', 1)
                 ->take(5)
                 ->orderBy('view', 'DESC')
                 ->get();
         });
 
-        $posts = Cache::remember('all_posts_page_' . $page, $this->cacheTime, function () {
+        $posts = Cache::remember(FrontendCache::key('all_posts_page_' . $page), $this->cacheTime, function () {
             return Post::where('status', 1)->orderBy('id', 'DESC')->paginate(6);
         });
 
-        $categories = Cache::remember('categories', $this->cacheTime, function () {
+        $categories = Cache::remember(FrontendCache::key('categories'), $this->cacheTime, function () {
             return PostCategory::where('status', 1)->get();
         });
 
         // Synthetic category object for "Tất Cả Bài Viết"
         $category = new PostCategory();
         $category->slug = 'posts';
-        $category->name = ['vi' => 'Tất Cả Tin Tức & Mẹo Sức Khỏe', 'en' => 'All News & Health Articles'];
+        $category->name = translate('post_category.all_posts');
 
         return $this->render('web.post_category.index', compact(
             'category',

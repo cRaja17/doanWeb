@@ -1,7 +1,7 @@
 @extends('web.layouts.index')
 
 @php
-    view()->share('title', isset($page) ? translate($page->name) : env('APP_NAME', 'Website'));
+    view()->share('title', isset($page) ? translate($page->name) : config('app.name'));
     view()->share('keywords', isset($page) ? translate($page->name) : '');
     view()->share('description', isset($page) ? strip_tags($page->description ?? '') : '');
     view()->share('robots', 'index, follow');

@@ -1,7 +1,7 @@
 @extends('web.layouts.index')
 
 @php
-    view()->share('title', translate('thanks.title') . ' - ' . env('APP_NAME', 'Website'));
+    view()->share('title', translate('thanks.title') . ' - ' . config('app.name'));
     view()->share('keywords', '');
     view()->share('description', '');
     view()->share('robots', 'noindex, nofollow');

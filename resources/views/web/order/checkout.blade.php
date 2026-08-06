@@ -1,7 +1,7 @@
 @extends('web.layouts.index')
 
 @php
-    view()->share('title', translate('cart.checkout') . ' - ' . env('APP_NAME', 'Website'));
+    view()->share('title', translate('cart.checkout') . ' - ' . config('app.name'));
     view()->share('keywords', '');
     view()->share('description', '');
     view()->share('robots', 'noindex, nofollow');
@@ -41,6 +41,28 @@
             </div>
         @endif
 
+        @if ($errors->any())
+            <div data-abide-error class="alert callout">
+                @foreach ($errors->all() as $error)
+                    <p><i class="fi-alert"></i>{{ $error }}</p>
+                @endforeach
+            </div>
+        @endif
+
+        @if ($priceChanged)
+            <div class="warning callout">
+                <p><i class="fi-alert"></i>{{ translate('checkout.price_changed') }}</p>
+            </div>
+        @endif
+
+        @if (!empty($stockProblems))
+            <div data-abide-error class="alert callout">
+                @foreach ($stockProblems as $problem)
+                    <p><i class="fi-alert"></i>{{ $problem }}</p>
+                @endforeach
+            </div>
+        @endif
+
         <div class="multi-step-product-step-subheader cell">
             <h6 class="multi-step-product-step-subheader">{{ translate('checkout.order') }}</h6>
 
@@ -55,19 +77,19 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($cartItems as $item)
-                        <tr class="text-center" data-id="{{ $item->rowId }}">
-                            <td><img class="order-product-image" src="{{ get_image_url($item->options['image']) }}"> </td>
-                            <td><span>{{ $item->options['name'][app()->getLocale()] }}</span>
+                    @foreach ($lines as $item)
+                        <tr class="text-center" data-id="{{ $item['rowId'] }}">
+                            <td><img class="order-product-image" src="{{ $item['image'] }}"> </td>
+                            <td><span>{{ $item['name'] }}</span>
                                 <ul class="order-product-info">
-                                    <li> {{ translate('cart.code') }}:{{ $item->id }}</li>
+                                    <li> {{ translate('cart.code') }}:{{ $item['code'] }}</li>
                                 </ul>
                             </td>
                             <td>
-                                <span>{{ $item->qty }}</span>
+                                <span>{{ $item['qty'] }}</span>
                             </td>
                             <td><span
-                                    class="order-product-price">{{ FormatCurrency($item->options['price'][app()->getLocale()]) }}</span><br
+                                    class="order-product-price">{{ FormatCurrency($item['price'] ?? 0) }}</span><br
                                     class="hide-for-small-only">
                             </td>
                         </tr>
@@ -177,7 +199,7 @@
         <div class="cell grid-container small-12 medium-4 large-4">
             <div class="multi-step-checkout-shipping-options multi-step-checkout-step-section">
                 {{-- check payment --}}
-                @if ($status_payment->value == 1)
+                @if ($paymentEnabled)
                     <h6 class="multi-step-checkout-step-subheader">{{ translate('checkout.method_payment') }}</h6>
                     <div class="row multi-step-checkout-shipping-option">
                         <label>
@@ -209,7 +231,8 @@
                             </div>
                         </label>
                     </div>
-                    <button type="submit" class="primary button expanded">{{ translate('checkout.button') }}</button>
+                    <button type="submit" class="primary button expanded"
+                        @disabled(!empty($stockProblems))>{{ translate('checkout.button') }}</button>
                 @else
                     <br>
                     <div class="cell multi-step-checkout-shipping-option" style="margin:2rem 0">
@@ -226,7 +249,8 @@
                         </label>
                     </div>
                     <input type="hidden" name="method_payment" value="none">
-                    <button type="submit" class="primary button expanded">{{ translate('checkout.order') }}</button>
+                    <button type="submit" class="primary button expanded"
+                        @disabled(!empty($stockProblems))>{{ translate('checkout.order') }}</button>
                 @endif
                 {{-- end --}}
             </div>
@@ -410,6 +434,11 @@
                     document.querySelector("#message-phone").style = "display:block;margin:0";
                     return false;
                 }
+
+                // Ô ẩn phone_full trước đây chỉ được điền khi khách rời khỏi ô
+                // nhập số; submit bằng Enter sẽ gửi đi số rỗng. Điền lại ngay
+                // trước khi gửi để server luôn nhận được số đầy đủ.
+                phoneFullInput.value = iti.getNumber();
 
 
                 // const check = checkZipcode(countryDropdown.options[countryDropdown.selectedIndex].getAttribute(

@@ -125,6 +125,10 @@ class ProductForm
                 TextInput::make('quantity')->label('Số lượng')
                     ->required()
                     ->numeric()
+                    // Tồn kho âm sẽ phá logic giữ hàng khi đặt đơn
+                    // (xem Order::deductStock), nên chặn ngay từ form.
+                    ->minValue(0)
+                    ->step(1)
                     ->default(0)
                     ->columnSpan(2),
                 TextInput::make('price')->label('Giá')

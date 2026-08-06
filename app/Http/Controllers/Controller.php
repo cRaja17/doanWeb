@@ -59,10 +59,11 @@ class Controller extends BaseController
     public function sendEmail($e, $subject, $content)
     {
         try {
-            Mail::html($content, function ($message) use ($e, $subject) {
-                $message->to($e)
-                        ->subject($subject);
-            });
+            if (empty($e)) {
+                throw new \RuntimeException('Thiếu địa chỉ email người nhận.');
+            }
+
+            Mail::to($e)->send(new \App\Mail\OrderNotification($subject, $content));
 
             return response()->json(['success' => true]);
         } catch (\Exception $ex) {

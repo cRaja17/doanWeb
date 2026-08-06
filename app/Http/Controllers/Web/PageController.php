@@ -8,6 +8,7 @@ use App\Models\Language;
 use App\Models\PostCategory;
 use Gloudemans\Shoppingcart\Facades\Cart;
 use Illuminate\Http\Request;
+use App\Support\FrontendCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Session;
 use Spatie\TranslationLoader\LanguageLine;
@@ -32,14 +33,14 @@ class PageController extends FontEndController
         $languages = Language::where('active', '=', 1)->get();
 
 
-        $featuredArticle = Cache::remember('featured_article_home_' . $lang, $this->cacheTime, function () use ($lang) {
+        $featuredArticle = Cache::remember(FrontendCache::key('featured_article_home_' . $lang), $this->cacheTime, function () use ($lang) {
             return Post::where('status', 1)
                 ->take(4)
                 ->orderBy('view', 'DESC')
                 ->get();
         });
 
-        $getSlides = Cache::remember('slides_home_' . $lang, $this->cacheTime, function () use ($lang) {
+        $getSlides = Cache::remember(FrontendCache::key('slides_home_' . $lang), $this->cacheTime, function () use ($lang) {
             $config = Config::where('name', 'slides')->first();
             $query = $config ? $config->value : '[]';
 
@@ -53,7 +54,7 @@ class PageController extends FontEndController
             return $data;
         });
 
-        $getImages = Cache::remember('images_home_' . $lang, $this->cacheTime, function () use ($lang) {
+        $getImages = Cache::remember(FrontendCache::key('images_home_' . $lang), $this->cacheTime, function () use ($lang) {
             $config = Config::where('name', 'images')->first();
             $query = $config ? $config->value : '[]';
 
@@ -68,18 +69,18 @@ class PageController extends FontEndController
         });
 
 
-        $getPostCategories = Cache::remember('post_categories_home_' . $lang, $this->cacheTime, function () use ($lang) {
+        $getPostCategories = Cache::remember(FrontendCache::key('post_categories_home_' . $lang), $this->cacheTime, function () use ($lang) {
             return PostCategory::where('status', 1)
                 ->get();
         });
 
-        $featuredProducts = Cache::remember('featured_products_home_' . $lang, $this->cacheTime, function () use ($lang) {
+        $featuredProducts = Cache::remember(FrontendCache::key('featured_products_home_' . $lang), $this->cacheTime, function () use ($lang) {
             return \App\Models\Product::where('status', 1)
                 ->take(8)
                 ->get();
         });
 
-        $productCategories = Cache::remember('product_categories_home_' . $lang, $this->cacheTime, function () use ($lang) {
+        $productCategories = Cache::remember(FrontendCache::key('product_categories_home_' . $lang), $this->cacheTime, function () use ($lang) {
             return \App\Models\ProductCategory::where('status', 1)
                 ->get();
         });
@@ -87,9 +88,9 @@ class PageController extends FontEndController
         $this->header = [
             'canonical' => route('web_home'),
             'robots' => 'index,follow',
-            'title' => 'Home',
-            'description' => 'Home',
-            'keywords' => 'Home',
+            'title' => translate('home.meta_title'),
+            'description' => translate('home.meta_description'),
+            'keywords' => translate('home.meta_keyword'),
             'og_image' => '',
             'og_url' => route('web_home'),
         ];

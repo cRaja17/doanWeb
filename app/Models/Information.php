@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FlushesFrontendCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -9,7 +10,7 @@ use Spatie\Translatable\HasTranslations;
 
 class Information extends Model
 {
-    use HasFactory, HasTranslations;
+    use FlushesFrontendCache, HasFactory, HasTranslations;
     protected $table = 'information';
     protected $fillable = [
         'name',

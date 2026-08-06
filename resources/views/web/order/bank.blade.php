@@ -1,7 +1,7 @@
 @extends('web.layouts.index')
 
 @php
-    view()->share('title', translate('payment.bank_transfer') . ' - ' . env('APP_NAME', 'Website'));
+    view()->share('title', translate('payment.bank_transfer') . ' - ' . config('app.name'));
     view()->share('keywords', '');
     view()->share('description', '');
     view()->share('robots', 'noindex, nofollow');
@@ -53,7 +53,7 @@
                 <li>{{ translate('checkout.mess') }}: {{ $order->message }}</li>
             </ul>
             <div class="multi-step-product-step-subheader cell">
-                <h6 class="multi-step-product-step-subheader">{{ trans('checkout.order') }}</h6>
+                <h6 class="multi-step-product-step-subheader">{{ translate('checkout.order') }}</h6>
 
                 <table class="order-table-content stack">
                     <thead>

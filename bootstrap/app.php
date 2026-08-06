@@ -31,7 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
 
         $middleware->alias([
-            'admin' => \App\Http\Middleware\Admin\Admin::class,
+            // Alias 'admin' đã bị gỡ: nó trỏ tới App\Http\Middleware\Admin\Admin
+            // vốn không tồn tại, nên chỉ cần có route nào dùng tới là lỗi 500.
             'ckfinderAuth' => \App\Http\Middleware\ckFinderAuthentication::class,
             'auth:api' => \Illuminate\Auth\Middleware\Authenticate::class,
             'localize'                => \Mcamara\LaravelLocalization\Middleware\LaravelLocalizationRoutes::class,

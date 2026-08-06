@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Web;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Support\FrontendCache;
 use Illuminate\Support\Facades\Cache;
 
 class ProductController extends FontEndController
 {
     public function index($slug, $any = null)
     {
-        $product = Cache::remember('product_' . $slug, $this->cacheTime, function () use ($slug) {
+        $product = Cache::remember(FrontendCache::key('product_' . $slug), $this->cacheTime, function () use ($slug) {
             return Product::where(['slug' => $slug, 'status' => 1])->first();
         });
 

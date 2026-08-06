@@ -1,4 +1,17 @@
 @extends('web.layouts.index')
+
+@php
+    // Layout dùng chung yêu cầu đủ bộ biến SEO; thiếu thì trang 404 lại ném ra
+    // lỗi 500, nghĩa là khách gặp đường dẫn hỏng sẽ thấy màn hình lỗi máy chủ.
+    view()->share('title', translate('error.404_title') . ' - ' . config('app.name'));
+    view()->share('keywords', '');
+    view()->share('description', '');
+    view()->share('robots', 'noindex, nofollow');
+    view()->share('canonical', url()->current());
+    view()->share('og_image', asset('images/default-seo.jpg'));
+    view()->share('og_url', url()->current());
+@endphp
+
 @section('content')
     <style>
         @import url('https://fonts.googleapis.com/css?family=Fjalla+One');
@@ -62,7 +75,6 @@
     </style>
     <div class="container-1">
         <div class="four1">
-            <?xml version="1.0" encoding="UTF-8"?>
             <svg width="133px" height="234px" viewBox="0 0 133 234" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 xmlns:xlink="http://www.w3.org/1999/xlink">
                 <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
@@ -77,7 +89,6 @@
             </svg>
         </div>
         <div class="zero">
-            <?xml version="1.0" encoding="UTF-8"?>
             <svg width="148px" height="237px" viewBox="0 0 148 237" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 xmlns:xlink="http://www.w3.org/1999/xlink">
                 <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
@@ -102,7 +113,6 @@
             </svg>
         </div>
         <div class="four2">
-            <?xml version="1.0" encoding="UTF-8"?>
             <svg width="133px" height="234px" viewBox="0 0 133 234" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 xmlns:xlink="http://www.w3.org/1999/xlink">
                 <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">

@@ -35,8 +35,12 @@ class OrderForm
                     ->columnSpanFull(),
                 TextInput::make('method_payment')->label('Phương thức TT')
                     ->default(null),
-                Textarea::make('content')
+                // Dòng hàng đã chuyển sang bảng `order_details` (xem tab Chi tiết
+                // đơn hàng). Cột này chỉ còn là bản lưu JSON của đơn cũ.
+                Textarea::make('content')->label('Bản lưu JSON (cũ)')
                     ->default(null)
+                    ->disabled()
+                    ->dehydrated(false)
                     ->columnSpanFull(),
                 TextInput::make('total')->label('Tổng tiền')
                     ->required()
@@ -48,11 +52,16 @@ class OrderForm
                     ->default(null),
                 TextInput::make('proxy')
                     ->default(null),
+                // Chỉ cổng thanh toán (payOS webhook / PayPal capture) được đổi cột này.
+                // `disabled()` khoá phía UI, `dehydrated(false)` đảm bảo giá trị gửi lên
+                // từ request bị bỏ qua kể cả khi có người sửa DOM.
                 Select::make('status')->label('Trạng thái thanh toán')
                     ->options(Order::statusOptions())
                     ->default(Order::STATUS_PENDING)
                     ->native(false)
-                    ->required(),
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('Do cổng thanh toán tự cập nhật, không sửa thủ công.'),
                 Select::make('order_status')->label('Tình trạng')
                     ->options(Order::orderStatusOptions())
                     ->default(Order::ORDER_STATUS_WAITING)

@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,3 +18,7 @@ use Illuminate\Support\Facades\Artisan;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Đóng các đơn khách bỏ dở giữa chừng và trả hàng đang giữ về kho.
+// Cần một cron gọi `php artisan schedule:run` mỗi phút thì lịch này mới chạy.
+Schedule::command('orders:cancel-stale')->hourly()->withoutOverlapping();

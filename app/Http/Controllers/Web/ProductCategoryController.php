@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use Http\Discovery\Exception\NotFoundException;
 use Illuminate\Http\Request;
+use App\Support\FrontendCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
@@ -44,8 +45,6 @@ class ProductCategoryController extends FontEndController
             $query->where('quantity', '>', 0);
         }
 
-        // Giá lưu trong cột JSON dưới dạng chuỗi, nên phải CAST sang số:
-        // nếu không MySQL so sánh theo ký tự và "1250000" sẽ đứng trước "240000".
         $priceSort = $this->priceSortExpression($locale);
 
         if ($sortBy == 'price_asc') {
@@ -61,13 +60,8 @@ class ProductCategoryController extends FontEndController
         return $query;
     }
 
-    /**
-     * Biểu thức SQL đọc giá theo ngôn ngữ và ép về số để so sánh/sắp xếp đúng.
-     */
     private function priceSortExpression($locale)
     {
-        // $locale đến từ danh sách ngôn ngữ được hỗ trợ, nhưng vẫn lọc lại cho chắc
-        // vì giá trị này được nối thẳng vào câu SQL.
         $locale = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $locale);
 
         return "CAST(JSON_UNQUOTE(JSON_EXTRACT(`price`, '$.\"{$locale}\"')) AS DECIMAL(15,2))";
@@ -75,14 +69,13 @@ class ProductCategoryController extends FontEndController
 
     private function getFilterData($locale)
     {
-        $categories = Cache::remember('product_categories_' . $locale, $this->cacheTime, function () {
-            // withCount tránh N+1: sidebar cần số sản phẩm của từng danh mục.
+        $categories = Cache::remember(FrontendCache::key('product_categories_' . $locale), $this->cacheTime, function () {
             return ProductCategory::where('status', 1)
                 ->withCount(['products' => fn($q) => $q->where('status', 1)])
                 ->get();
         });
 
-        $origins = Cache::remember('product_origins_' . $locale, $this->cacheTime, function () use ($locale) {
+        $origins = Cache::remember(FrontendCache::key('product_origins_' . $locale), $this->cacheTime, function () use ($locale) {
             return Product::where('status', 1)
                 ->get()
                 ->map(fn($p) => $p->getTranslation('made', $locale, false))
@@ -100,18 +93,20 @@ class ProductCategoryController extends FontEndController
     public function index(Request $request, ProductCategory $category, $slug)
     {
         $locale = app()->getLocale();
-        $category = Cache::remember('product_category_' . $slug . '_' . $locale, $this->cacheTime, function () use ($slug) {
+        $category = Cache::remember(FrontendCache::key('product_category_' . $slug . '_' . $locale), $this->cacheTime, function () use ($slug) {
             return ProductCategory::where(["slug" => $slug, "status" => 1])->first();
         });
 
-        if (!$category) return abort(404);
+        if (!$category)
+            return abort(404);
 
         $perPage = (int) $request->input('per_page', 12);
-        if (!in_array($perPage, [6, 12, 24, 48])) $perPage = 12;
+        if (!in_array($perPage, [6, 12, 24, 48]))
+            $perPage = 12;
 
         $query = $category->products()->where('status', 1);
         $query = $this->applyFilters($query, $request, $locale);
-        
+
         $products = $query->paginate($perPage)->withQueryString();
         extract($this->getFilterData($locale));
 
@@ -119,8 +114,10 @@ class ProductCategoryController extends FontEndController
             'canonical' => Route('web_list_product', $category->slug),
             'robots' => $category->robots ?? 'index,follow',
             'title' => $category->name,
-            'description' => $category->meta_description ?? "Thực phẩm chức năng cao cấp " . $category->name,
-            'keywords' => $category->meta_keywords ?? "thực phẩm chức năng, bổ sung sức khỏe, " . $category->name,
+            'description' => $category->meta_description
+                ?? translate('product_category.meta_description_default', ['name' => $category->name]),
+            'keywords' => $category->meta_keywords
+                ?? translate('product_category.meta_keywords_default', ['name' => $category->name]),
             'og_image' => $category->image,
             'og_url' => Route('web_list_product', $category->slug),
         ];
@@ -138,7 +135,8 @@ class ProductCategoryController extends FontEndController
     {
         $locale = app()->getLocale();
         $perPage = (int) $request->input('per_page', 12);
-        if (!in_array($perPage, [6, 12, 24, 48])) $perPage = 12;
+        if (!in_array($perPage, [6, 12, 24, 48]))
+            $perPage = 12;
 
         $selectedCatSlug = $request->input('category', null);
         $query = Product::where('status', 1);
@@ -154,17 +152,17 @@ class ProductCategoryController extends FontEndController
         $products = $query->paginate($perPage)->withQueryString();
         extract($this->getFilterData($locale));
 
-        // Synthetic category model for "All Products"
+        $allProductsLabel = translate('product_category.all_products');
         $category = new ProductCategory();
         $category->slug = 'all';
-        $category->name = ['vi' => 'Tất Cả Sản Phẩm', 'en' => 'All Products'];
+        $category->name = $allProductsLabel;
 
         $this->header = [
             'canonical' => route('web_all_products'),
             'robots' => 'index,follow',
-            'title' => 'Tất Cả Sản Phẩm - HealthNutri',
-            'description' => 'Khám phá tất cả các sản phẩm bổ sung sức khỏe, vitamin, whey protein và thảo dược detox nhập khẩu chính hãng.',
-            'keywords' => 'tất cả sản phẩm, thực phẩm chức năng, vitamin, whey, collagen, detox',
+            'title' => translate('product_category.all_meta_title'),
+            'description' => translate('product_category.all_meta_description'),
+            'keywords' => translate('product_category.all_meta_keywords'),
             'og_image' => '',
             'og_url' => route('web_all_products'),
         ];
@@ -175,22 +173,27 @@ class ProductCategoryController extends FontEndController
         );
     }
 
-    /**
-     * AJAX filter Handler for PLP
-     */
     public function ajaxGetProducts(Request $request)
     {
         $data = $request->all();
+
+        // Chỉ nhận ngôn ngữ nằm trong danh sách được hỗ trợ: setLocale() với giá
+        // trị tuỳ ý sẽ khiến các truy vấn bên dưới đọc khoá JSON không tồn tại.
         $locale = $data['locale'] ?? app()->getLocale();
+        if (!array_key_exists($locale, (array) config('laravellocalization.supportedLocales', []))) {
+            $locale = app()->getLocale();
+        }
         app()->setLocale($locale);
 
         $minPrice = (int) ($data['filter']['minPrice'] ?? 0);
         $maxPrice = (int) ($data['filter']['maxPrice'] ?? 10000000);
         $brand = $data['filter']['brand'] ?? null;
         $sortBy = $data['filter']['sort'] ?? 'newest';
+        // Thiếu `slug` trước đây là undefined key; mặc định coi như xem tất cả.
+        $slug = $data['slug'] ?? 'all';
 
-        if ($data['slug'] != 'all') {
-            $category = ProductCategory::where('slug', $data['slug'])->first();
+        if ($slug != 'all') {
+            $category = ProductCategory::where('slug', $slug)->first();
             if ($category) {
                 $query = $category->products()->where('status', 1);
             } else {
@@ -203,7 +206,7 @@ class ProductCategoryController extends FontEndController
         if ($minPrice > 0 || $maxPrice < 10000000) {
             $query->where(function ($q) use ($locale, $minPrice, $maxPrice) {
                 $q->where('price->' . $locale, '>=', $minPrice)
-                  ->where('price->' . $locale, '<=', $maxPrice);
+                    ->where('price->' . $locale, '<=', $maxPrice);
             });
         }
 

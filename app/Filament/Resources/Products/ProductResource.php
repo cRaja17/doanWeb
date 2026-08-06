@@ -14,6 +14,7 @@ use LaraZeus\SpatieTranslatable\Resources\Concerns\Translatable;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ProductResource extends Resource
 {
@@ -36,6 +37,26 @@ class ProductResource extends Resource
     public static function table(Table $table): Table
     {
         return ProductsTable::configure($table);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cấm xoá sản phẩm
+    |--------------------------------------------------------------------------
+    |
+    | Sản phẩm có thể đã nằm trong đơn hàng cũ. Ngừng bán thì đặt Trạng thái sang
+    | "Ẩn" - sản phẩm sẽ biến mất khỏi trang khách nhưng đơn cũ vẫn tra cứu được.
+    | Chốt chặn cuối cùng nằm ở Product::deletionBlockedReason().
+    |
+    */
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 
     public static function getRelations(): array
